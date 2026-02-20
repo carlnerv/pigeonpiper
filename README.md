@@ -1,5 +1,5 @@
 # pigeonpiper
-A Professional Log Transport Tool 一个高效日志下载打包工具
+A Professional Log Transport Tool 一个高效日志下载打包工具✧
 
 Pigeon Piper 是一款轻量级的日志自动化采集与预处理工具。它专为解决“多服务器日志分散、格式不统一、手动搜集繁琐”的痛点而设计。通过简单的 GUI 配置，你可以一键完成从远程拉取、本地转换、打包压缩到归档推送的全流程。
 ## ✨ 主要功能
