@@ -666,7 +666,7 @@ func main() {
 	)
 	menuAbout := fyne.NewMenu("帮助",
 		fyne.NewMenuItem("关于", func() {
-			dialog.ShowInformation("关于", "Pigeon Piper\nA Professional Log Transport Tool\n版本: 1.0\n\n高效的日志下载与打包工具\n需要rsync>=3.0.9 tar>=1.26（支持xz）", myWindow)
+			dialog.ShowInformation("关于", "Pigeon Piper\nA Professional Log Transport Tool\n版本: 1.0\n高效的日志下载与打包工具\n需要rsync>=3.0.9 tar>=1.26（支持xz）\nMIT License\n© 2026 XeonM", myWindow)
 		}),
 	)
 
