@@ -1,0 +1,22 @@
+[Desktop Entry]
+# 程序的名称
+Name=Pigeonpiper
+Comment=Authentic Rsync Transfer Tool
+
+# 【关键】指向你的启动脚本的绝对路径
+# 注意：~ 符号在 Exec 中有时不生效，建议写完整路径如 /home/user/...
+# Exec=/path/to/your/folder/start.sh
+Exec=/usr/bin/env LD_LIBRARY_PATH=/path/to/folder/libs:$LD_LIBRARY_PATH /path/to/folder/Pigeonpiper
+
+# 程序图标路径（如果没有图标可以删掉这行或指向一个 png）
+Icon=/path/to/your/folder/icon.png
+
+# 是否在终端运行。GUI 程序通常设为 false
+Terminal=false
+
+Type=Application
+# 决定它在菜单里的分类
+Categories=Utility;Development;Network;
+
+# 启动通知，让鼠标转圈提示正在启动
+StartupNotify=true
