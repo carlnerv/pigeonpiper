@@ -21,6 +21,10 @@ A Professional Log Transport Tool 一个高效日志下载打包工具✧基于C
 chmod +x start.sh Pigeonpiper
 ./start.sh
 ```
+或通过 PigeonPiper.desktop 启动器直接执行
+
+**\*** 需要修改 start.sh 和 PigeonPiper.desktop 中的路径
+
 2. 配置自定义 rsync (推荐)
 
 如果你的系统 rsync 版本低于 3.1.0，建议在“设置”窗口中指定自定义路径：
