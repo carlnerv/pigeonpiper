@@ -15,12 +15,14 @@ A Professional Log Transport Tool 一个高效日志下载打包工具✧基于C
 
 # 🚀 快速开始
 1. 部署与启动
+
 解压后，无需安装，直接通过启动脚本运行：
 ```
 chmod +x start.sh Pigeonpiper
 ./start.sh
 ```
 2. 配置自定义 rsync (推荐)
+
 如果你的系统 rsync 版本低于 3.1.0，建议在“设置”窗口中指定自定义路径：
   1. 打开 Settings -> Global Configuration。
   2. 在 Custom rsync path 中输入自带 rsync 的绝对路径。
