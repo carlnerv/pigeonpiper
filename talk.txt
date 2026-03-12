@@ -1,0 +1,118 @@
+写一个linux图形界面程序，支持rhel7的gcc 4.8.5、glibc 2.17、qt5.9.7，使用Qt Widgets
+核心功能为获取远程目录内容，下载已选文件，根据扩展名调用对应工具转换，打包压缩，最后发送到指定远程路径。调用rsync获取目录内容并解析，调用rsync获取文件，调用rsync发送文件，调用tar打包（支持gz和xz压缩）。用配置文件保存目标路径、打包文件名格式（支持date命令时间格式，不带扩展名），源路径标签及路径
+主界面分为两个tab，浏览文件与传输任务。浏览文件页分为左右两部分，左侧为服务器列表，使用树形结构显示服务器及路径标签。点击路径标签进入路径。右侧上方为工具栏，下方为文件列表。工具栏有添加到下载任务、刷新目录、活动指示器、面包屑导航（主机名:[路径标签][子目录]，主机名为lable，路径标签及子目录为button）。文件列表的列为文件名、大小、类型、修改时间，文件支持check勾选，点击文件夹进入，文件夹中增加返回上级目录条目。传输任务页分为上下两部分，上侧为待下载文件列表，每个文件一条，显示任务状态（待下载、下载中、转换中、已完成）、文件路径（主机名：路径标签/子路径/文件名）、删除按钮、进度条。下侧放压缩包格式选项（.tar.gz与.tar.xz）、任务状态、进度条、开始/停止/清除已完成按钮。菜单栏为文件（配置、退出）及关于
+配置窗口从上到下的grid为全局配置、转换工具配置、源服务器配置。全局配置中配置目标路径（带测试可达按钮）、打包文件名格式、检查环境依赖按钮（检查rsync与tar版本）。转换工具有添加规则按钮，每条规则配置扩展名、命令、检查命令是否存在、删除。源服务器配置有新增服务器按钮，每条服务器配置user@host（带测试可达按钮）、新增路径按钮、路径标签、路径、检查路径可达按钮、删除路径按钮、删除服务器按钮。窗口底部有保存和取消按钮。
+工作逻辑是每次打开软件时按配置文件更新服务器列表，保存配置后也刷新服务器列表。若无配置文件则新建默认配置文件，仅配置目标路径为本地、打包文件名格式（Log_%Y%m%d_%H%M%S）。配置文件保存为json格式。选择路径标签后进入该路径，在文件列表显示该路径下的文件夹及文件，排序为先显示文件夹，再显示文件，都按名称排序。文件带check选项，勾选后点击添加到任务列表就添加到下载列表。选择文件夹则进入，进入后文件列表第一条增加返回上级条目，成功进入后面包屑导航更新为子目录。添加到下载任务的文件显示为待下载。按开始后并行下载到本地临时路径，保存为“主机名/路径标签/子路径/文件”；下载完成后检查文件扩展名，若匹配规则则使用指定命令转换为txt文本；所有文件下载转换完后，统一打包压缩到另一临时路径，避免递归打包，压缩格式按选项；打包完成后发送到远程路径。按停止按钮停止下载、转换、发送。再按开始按钮时，未下载完的文件断点续传，未转换完的文件重新转换，未发送完的文件断点续传。所有文件为已完成状态，则忽略按开始按钮。清除已完成按钮清除已完成任务并删除临时文件。关闭程序时清除临时文件
+给出完成代码
+
+程序名叫pigeonpiper，仅显示需要修改的部分。给出settingsdialog.cpp代码
+
+mainwindow.cpp:143:6: 警告：未使用的参数‘column’ [-Wunused-parameter]
+ void MainWindow::onTreeItemClicked(QTreeWidgetItem *item, int column) {
+      ^
+mainwindow.cpp:186:6: 警告：未使用的参数‘exitCode’ [-Wunused-parameter]
+ void MainWindow::onRsyncFinished(int exitCode, QProcess::ExitStatus) {
+      ^
+mainwindow.cpp:224:6: 警告：未使用的参数‘column’ [-Wunused-parameter]
+ void MainWindow::onDirDoubleClicked(int row, int column) {
+moc_mainwindow.o：在函数‘MainWindow::qt_static_metacall(QObject*, QMetaObject::Call, int, void**)’中：
+/home/carlnerv/share/code/pigeonpiper/moc_mainwindow.cpp:118：对‘MainWindow::onBreadcrumbClicked()’未定义的引用
+moc_transfermanager.o：在函数‘TransferManager::qt_static_metacall(QObject*, QMetaObject::Call, int, void**)’中：
+/home/carlnerv/share/code/pigeonpiper/moc_transfermanager.cpp:104：对‘TransferManager::onConvertFinished(int)’未定义的引用
+collect2: 错误：ld 返回 1
+make: *** [PigeonPiper] 错误 1
+
+细化文件格式转换的代码，所有文件下载完成后用find根据配置中的扩展名进行查找，查找到的文件使用工具转换到同目录。我需要用的工具类似cat，读取文件输出到标准输出，需要重定向为txt文件。下载文件的状态改为待下载、下载中、已完成，状态“转换中”放到全局进度条中。只显示修改部分
+
+文件列表改为QTreeView，文件使用QStandardItemModel存储，带checkbox。活动指示器改为固定宽度。下载页面使用QTableView，放进度条和删除按钮。
+
+临时目录改为程序同目录下的temp和archives，文件下载到temp，打包文件放到archives，避免多次运行时将旧压缩包一起打包。关闭程序时和按清除已完成时清除temp中对应文件和空文件夹（可用find）。archives中文件不删除
+
+将最终生成的归档文件上传（Upload）到在 Settings 中配置的远端 targetPath 的逻辑补齐。配置中目标路径仅配置远程targetPath，如果为空则不发送。配置文件保存到程序同目录。配置窗口添加规则按钮和添加服务器按钮能放到添加的条目下面吗？
+
+下载任务的tableview的列宽改为可调，和文件浏览treeview的列宽都保存到配置文件，启动时读取。文件浏览treeview增加排序功能，默认按文件名排序。文件名排序先显示文件夹再显示文件，其他排序第二条件为文件名。文件大小改为human-readable，按1024分
+
+serverTree的宽度也保存。添加任务时检查列表避免重复添加。清除已完成和退出程序时都没有清除temp文件夹中的内容，修改为单独删除已完成任务时删除对应文件，最后调用删除temp内空文件夹；清除已完成时逐条对已完成任务调用删除，最后调用删除temp内空文件夹；未下载完的文件，仅删除任务，不删除文件；程序退出时清空temp文件夹
+
+removeTask和clearFinishedTasks清理temp中空文件夹时把temp也清除了，改用qdir清理temp下的空文件夹而不删除temp，只有程序关闭时删除temp。添加任务后弹一个提示窗口，提示已添加几个文件，如有重复则提示跳过几个重复文件
+
+清除已完成按钮只清除了任务列表，没清除文件，如何排查？另外获取目录增加超时保护(5s)，如无法获取则在活动指示器显示Failed
+
+改用rsync的timeout功能，而不是用qtimer实现。处理rsync返回的错误（timeout、ssh network is unreachable、no route to host等）。获取文件列表时若有错误则在活动指示器提示failed，并在活动指示器hover event显示rsync返回错误信息的第一行。下载和上传时也使用rsync返回的错误。下载时若失败则在任务状态显示Failed，并在任务状态的hover event显示rsync返回错误信息的第一行。上传时错误则在状态label显示Upload Failed和错误信息第一行
+
+使用qt自带图标，文件使用SP_FileIcon，文件夹使用SP_DirIcon，返回上级目录使用SP_FileDialogToParent，增加判断链接文件，使用SP_FileLinkIcon。刷新按钮使用SP_BrowerReload
+
+修改进入目录逻辑，如果进入失败，则不进入目录，只在活动指示器提示。如果进入目录的link，面包屑也随之增加子目录
+
+文件大小数字部分有逗号，使用QLocale处理。细化压缩包命名配置功能，做一个转换函数将date命令占位符转为对应qdatetime时间
+//%a%A%b%B%c%d%F%g%G%h%H%I%j%k%l%m%M%p%P%r%S%u%U%V%w%W%x%X%y%Y%Z
+
+在配置窗口打包格式输入框右边放一个帮助按钮，按下后弹窗提示支持的date占位符。增加多语言支持，至少支持英文和中文。在配置中增加语言下拉菜单选项，放在检查环境依赖右边
+
+//图标、翻译、date占位符
+
+在菜单栏增加关于。关于弹窗写一些程序的介绍，左上角放icon.png图片。icon.png同时要作为程序图标
+
+        // 构造 find 配合 sh -c 重定向的命令
+        // 命令示例: find /tmp/... -type f -name "*.doc" -exec sh -c 'antiword "$1" > "$1.txt"' _ {} \;
+        QString script = QString("find '%1' -type f -name '*%2' -exec sh -c '%3 \"$1\" > \"$1.txt\"' _ {} \\;")
+                             // .arg(tempDir.path())
+							 .arg(tempDirPath)
+                             .arg(rule.ext)
+                             .arg(rule.cmd);
+        
+        currentProcess->start("sh", QStringList() << "-c" << script);
+这里改为用QDirIterator遍历目录查找扩展名进行转换。配置窗口中所有输入框增加禁用字符检查，避免shell注入
+
+将转换改到下载文件后立即执行，下载任务增加状态“转换中”，整体任务状态去除转换阶段
+
+ settingsdialog.cpp: 在成员函数‘void SettingsDialog::addRuleRow(const QString&, const QString&)’中:
+settingsdialog.cpp:133:24: 错误：‘safeValidator’在此作用域中尚未声明
+  cmdEdit->setValidator(safeValidator);
+                        ^
+make: *** [settingsdialog.o] 错误 1 
+
+ transfermanager.cpp: 在成员函数‘void TransferManager::onSingleConversionFinished(int)’中:
+transfermanager.cpp:381:43: 错误：‘NormalChannels’不是‘QProcess’的成员
+     currentProcess->setProcessChannelMode(QProcess::NormalChannels);
+                                           ^
+make: *** [transfermanager.o] 错误 1 
+
+增加tooltip提示用户输入限制
+
+关于窗口在不同平台上显示不全文字，如何动态设定窗口大小以显示全文本内容 
+
+双击目录没有反应了
+
+在 rsync 还没结束时，为避免出现竞争，能暂时锁定双击功能和刷新功能吗？我已经在rsync设置了超时停止
+
+..返回不了上级目录
+
+为..设置icon、text、data都未生效，只有setcheckable(false)生效了
+
+调整onRsyncFinished函数中for (const QString& line : lines)部分，rsync获取的目录数据中始终忽略.和..，在for之前已经手动为子目录添加..了 
+
+给TransferManager::start增加一个检查，如果任务列表为空则忽略
+
+检查文件排序逻辑，按文件名排序并未先显示文件夹再显示文件（链接视为文件）
+
+类型相同时调整为按文件名排
+
+给面包屑增加连续按钮的样式
+
+设置bottomLayout为固定默认最小高度，不需要可调 
+
+ // 进度伪逻辑（实际开发中可根据 rsync 输出更新详细进度）
+        if (tasks[i].state == Finished) pb->setValue(100);
+        else if (tasks[i].state == Downloading) pb->setValue(50); 
+        else pb->setValue(0); 改为根据rsync输出更新详细进度 
+
+我将自带rsync 3.1.2版本，调整传输进度代码
+
+增加一个检查，软件启动时检查rsync版本，如果是3.0.9，则调用自带的rsync，如果是3.1.0及以上则使用系统的rsync。如果版本小于3.0.9，则弹框提示rsync需要至少3.0.9（无其他动作）
+
+调整设置窗口中检查环境依赖弹窗，显示查询的版本号，查询失败则显示失败
+
+程序写完了。将所有用到的库文件拷到程序目录libs下，写一个启动脚本，优先使用系统库文件，若缺少则用自带库文件 
+
+在配置窗口全局设置增加一行，要求提供自定义rsync路径。保存到配置文件。程序中使用自带rsync改为使用自定义rsync，如果路径为空则使用系统rsync。检查依赖时使用自定义路径，若为空则检查系统rsync版本
