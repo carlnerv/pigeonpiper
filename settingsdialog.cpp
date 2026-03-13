@@ -4,7 +4,7 @@
 #include <QProcess>
 #include <QComboBox>
 #include <QStandardPaths>
-#include <QRegExp>
+// #include <QRegExp>
 #include <QRegularExpressionValidator>
 
 SettingsDialog::SettingsDialog(const AppConfig& config, QWidget *parent) 

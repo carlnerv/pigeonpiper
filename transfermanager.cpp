@@ -4,7 +4,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDebug>
-#include <QRegExp>
+// #include <QRegExp>
+#include <QRegularExpression>
 
 // TransferManager::TransferManager(QObject *parent) : QObject(parent), currentTaskIndex(0), currentProcess(new QProcess(this)), isRunning(false) {}
 TransferManager::TransferManager(QObject *parent) : QObject(parent), isRunning(false) {
@@ -241,7 +242,7 @@ void TransferManager::onDownloadFinished(int exitCode) {
         // 下载成功，检查是否需要转换
         QString fileName = tasks[currentTaskIndex].fileName;
         QString matchedCmd = "";
-        tasks[currentTaskIndex].progress = 100;
+        // tasks[currentTaskIndex].progress = 100;
         // 遍历配置中的规则（假设可以通过 ConfigManager::loadConfig() 或类成员 m_config 获取）
         auto config = ConfigManager::loadConfig(); 
 		// auto config = m_Config; 
@@ -249,8 +250,12 @@ void TransferManager::onDownloadFinished(int exitCode) {
             // 确保后缀匹配逻辑正确（防呆设计，处理用户可能没填 '.' 的情况）
             QString ext = rule.ext;
             if (!ext.startsWith(".")) ext = "." + ext; 
+			
+			QString pattern = QRegularExpression::escape(ext) + "(\\.\\d+)?$";
+			QRegularExpression re(pattern);
             
-            if (fileName.endsWith(ext, Qt::CaseInsensitive)) {
+            // if (fileName.endsWith(ext, Qt::CaseInsensitive)) {
+			if (re.match(fileName).hasMatch()) {
                 matchedCmd = rule.cmd;
                 break;
             }
@@ -349,15 +354,21 @@ void TransferManager::onRsyncProgress() {
     QString output = currentProcess->readAllStandardOutput();
     
     // 使用正则匹配类似于 " 45%" 或 "100%" 的文本
-    QRegExp rx("\\b(\\d+)%");
-    int pos = 0;
+    // QRegExp rx("\\b(\\d+)%");
+    QRegularExpression re("\\b(\\d+)%");
+	QRegularExpressionMatchIterator i = re.globalMatch(output);
+    // int pos = 0;
     int lastProgress = -1;
     
     // 遍历当前读取到的所有块，找到最新的一个百分比
-    while ((pos = rx.indexIn(output, pos)) != -1) {
-        lastProgress = rx.cap(1).toInt();
-        pos += rx.matchedLength();
-    }
+    // while ((pos = rx.indexIn(output, pos)) != -1) {
+        // lastProgress = rx.cap(1).toInt();
+        // pos += rx.matchedLength();
+    // }
+	while (i.hasNext()) {
+		QRegularExpressionMatch match = i.next();
+		lastProgress = match.captured(1).toInt();
+	}
 
     if (lastProgress >= 0 && lastProgress <= 100) {
         // 只有当进度真正发生变化时才触发 UI 刷新，防止频繁重绘导致界面卡顿

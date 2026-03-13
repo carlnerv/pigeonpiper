@@ -7,7 +7,8 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QLocale>
-#include <QRegExp>
+// #include <QRegExp>
+#include <QRegularExpression>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_transferMgr(new TransferManager(this)) {
     m_config = ConfigManager::loadConfig();
@@ -288,12 +289,18 @@ void MainWindow::checkRsyncVersion() {
     QString output = process.readAllStandardOutput();
     
     // 提取 rsync 版本号，如 "rsync  version 3.1.2  protocol version 31"
-    QRegExp rx("version\\s+(\\d+)\\.(\\d+)\\.(\\d+)");
-    
-    if (rx.indexIn(output) != -1) {
-        int major = rx.cap(1).toInt();
-        int minor = rx.cap(2).toInt();
-        int patch = rx.cap(3).toInt();
+    // QRegExp rx("version\\s+(\\d+)\\.(\\d+)\\.(\\d+)");
+    QRegularExpression re("version\\s+(\\d+)\\.(\\d+)\\.(\\d+)");
+    QRegularExpressionMatch match = re.match(output);
+	
+    // if (rx.indexIn(output) != -1) {
+        // int major = rx.cap(1).toInt();
+        // int minor = rx.cap(2).toInt();
+        // int patch = rx.cap(3).toInt();
+	if (match.hasMatch()) {
+		int major = match.captured(1).toInt();
+		int minor = match.captured(2).toInt();
+		int patch = match.captured(3).toInt();
 
         if (major < 3 || (major == 3 && minor == 0 && patch < 9)) {
             // < 3.0.9：弹框警告，无其他动作（保持默认 "rsync"）
@@ -493,7 +500,8 @@ void MainWindow::onRsyncFinished(int exitCode, QProcess::ExitStatus exitStatus) 
 		// -rw-r--r--              0 2026/02/15 20:44:20 logfileB.log
 		// drwxr-xr-x          4,096 2026/02/15 20:44:29 c_log
 		
-        QStringList parts = line.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+        // QStringList parts = line.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+        QStringList parts = line.split(QRegularExpression("\\s+"), QString::SkipEmptyParts);
         if (parts.size() < 5) continue;
         
         QString perms = parts[0];
@@ -687,6 +695,8 @@ void MainWindow::refreshTaskUi() {
         
         // 真实的进度逻辑
         if (tasks[i].state == Finished) {
+			pb->setMaximum(100);
+            pb->setMinimum(0);
             pb->setValue(100);
         } else if (tasks[i].state == Downloading) {
             // 直接读取解析出来的实时进度

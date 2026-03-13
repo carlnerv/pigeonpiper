@@ -27,14 +27,14 @@ struct ServerConfig {
 };
 
 struct AppConfig {
-    QString targetPath = "local_target";
+    QString targetPath = "";
     QString archiveFormat = "Log_%Y%m%d_%H%M%S";
     QList<RuleConfig> rules;
     QList<ServerConfig> servers;
 	QByteArray fileTreeState;
     QByteArray taskTableState;
 	QByteArray browseSplitterState;
-	QString language = "zh_CN";
+	QString language = "en";
 	QString customRsyncPath; // 自定义 rsync 路径
 };
 
